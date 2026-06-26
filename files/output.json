@@ -1,0 +1,6 @@
+{
+  "title": "MiniLM: Deep Self-Attention Distillation for Task-Agnostic Compression of Pre-Trained Transformers",
+  "key_claim": "MiniLM can compress large pre\u2011trained Transformer models by deeply mimicking the self\u2011attention module of the teacher\u2019s last layer\u2014using both attention distributions and a novel value\u2011relation matrix\u2014and, with a Teacher Assistant, retain over 99% of the original accuracy while using roughly half the parameters and computation.",
+  "method_used": "Deep self\u2011attention distillation that matches the teacher\u2019s attention distribution (scaled QK^T) and introduces scaled dot\u2011product between value vectors as additional knowledge; distillation is applied to the last Transformer layer and optionally staged through an intermediate Teacher Assistant model.",
+  "main_result": "A 6\u2011layer, 768\u2011dim student distilled from BERT\u2011Base runs 2\u00d7 faster, keeps >99% accuracy on SQuAD\u00a02.0 and GLUE benchmarks, and achieves competitive multilingual performance, all with about 50% of the teacher\u2019s parameters and FLOPs."
+}
