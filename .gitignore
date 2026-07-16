@@ -10,3 +10,14 @@ wheels/
 .venv
 
 .env
+
+data/**
+
+!data/
+!data/uploads/
+!data/uploads/.gitkeep
+!data/exports/
+!data/exports/.gitkeep
+!data/cache/
+!data/cache/parsed/
+!data/cache/parsed/.gitkeep
