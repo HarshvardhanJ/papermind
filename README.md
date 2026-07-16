@@ -69,7 +69,7 @@ PaperMind's ingestion pipeline instead detects document structure first, and chu
 
 ```mermaid
 graph LR
-    A[Raw PDF] --> B[Text + Layout Extraction<br/>PyMuPDF]
+    A[Raw PDF] --> B[Text + Layout Extraction<br/>Docling]
     B --> C{Section<br/>Detection}
     C --> D[Abstract]
     C --> E[Introduction]
@@ -94,7 +94,7 @@ graph LR
 
 | Component | Purpose | Planned Tech |
 |---|---|---|
-| **Ingestion Service** | Extract text/layout from PDFs, detect sections, chunk with metadata tags | PyMuPDF, custom chunker |
+| **Ingestion Service** | Extract text/layout from PDFs, detect sections, chunk with metadata tags | Docling, custom chunker |
 | **Embedding Service** | Generate dense vector representations of chunks | sentence-transformers |
 | **Vector Store** | Semantic similarity search over chunks | ChromaDB |
 | **Extraction Service** | Pull structured fields (materials, metrics, methods) from each paper via LLM | LLM API + Pydantic schemas |
@@ -130,7 +130,7 @@ These are the kinds of questions PaperMind is designed to eventually answer acro
 
 | Layer | Technology |
 |---|---|
-| PDF Parsing | PyMuPDF |
+| PDF Parsing | Docling |
 | Embeddings | sentence-transformers |
 | Vector Database | ChromaDB |
 | Structured Extraction | LLM API + Pydantic |
