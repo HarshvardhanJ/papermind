@@ -1,0 +1,27 @@
+# Ignore files not needed in Docker build
+.git
+.gitignore
+__pycache__
+*.pyc
+.pytest_cache
+.venv
+venv
+.env
+.env.local
+data/
+*.db
+*.sqlite
+*.log
+.chainlit
+chainlit.md
+scripts/
+tests/
+*.json
+!pyproject.toml
+!uv.lock
+!papermind/
+!prompts/
+!Dockerfile
+!docker-compose.yml
+!.dockerignore
+!README.md
