@@ -19,8 +19,9 @@ FIXTURE = (Path(__file__).parent / "fixtures" / "sample_docling.md").read_text()
 
 def test_headings_become_sections():
     headings = [s.heading for s in markdown_to_sections(FIXTURE)]
-    for expected in ["Abstract", "1 Introduction", "3 Results", "References"]:
+    for expected in ["Abstract", "1 Introduction", "3 Results"]:
         assert expected in headings
+    assert "References" not in headings
 
 
 def test_author_table_and_placeholders_are_removed():

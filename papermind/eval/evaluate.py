@@ -24,7 +24,7 @@ Usage:
 import json
 import sys
 
-from papermind.retrieval.vector_store import search
+from papermind.retrieval.reranker import hybrid_rerank_search
 
 
 def is_hit(chunk_text: str, expected_keywords: list[str]) -> bool:
@@ -32,13 +32,13 @@ def is_hit(chunk_text: str, expected_keywords: list[str]) -> bool:
     return all(kw.lower() in text for kw in expected_keywords)
 
 
-def evaluate(eval_items: list[dict], k: int = 5) -> dict:
+def evaluate(eval_items: list[dict], k: int = 5, use_hybrid: bool = True, use_reranker: bool = True) -> dict:
     hits = 0
     reciprocal_ranks = []
     details = []
 
     for item in eval_items:
-        results = search(item["question"], top_k=k)
+        results = hybrid_rerank_search(item["question"], top_k=k)
         rank = None
         for i, r in enumerate(results, start=1):
             if is_hit(r["text"], item["expected_keywords"]):

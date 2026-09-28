@@ -32,6 +32,7 @@ from pydantic import BaseModel, ConfigDict
 from papermind.storage.database import init_db, get_session
 from papermind.storage.models import Paper
 from papermind.ingestion.pipeline import ingest_pdf
+from papermind.ingestion.background_worker import start_worker
 from papermind.retrieval.vector_store import (
     delete_paper as delete_paper_vectors,
     count as vector_count,
@@ -45,6 +46,8 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    # Start background ingestion worker
+    worker_thread = start_worker()
     yield
 
 
@@ -88,6 +91,43 @@ async def upload_paper(file: UploadFile = File(...), extract: bool = True):
         raise HTTPException(422, result["error"])
 
     return result
+
+
+@app.post("/papers/async")
+async def upload_paper_async(file: UploadFile = File(...), extract: bool = True):
+    """
+    Upload a PDF for background ingestion.
+    Returns immediately with paper_id and 'pending' status.
+    Poll /papers/{id}/status to track progress.
+    """
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(400, "Only PDF files are supported")
+
+    dest = UPLOAD_DIR / file.filename
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    # Create paper record with pending status
+    from pathlib import Path
+    import hashlib
+    file_hash = hashlib.sha256(dest.read_bytes()).hexdigest()
+    
+    with get_session() as session:
+        existing = session.query(Paper).filter(Paper.file_hash == file_hash).first()
+        if existing:
+            return {
+                "paper_id": existing.id,
+                "status": "duplicate",
+                "chunks": 0,
+                "error": f"Already indexed as '{existing.title or existing.filename}'",
+            }
+        
+        paper = Paper(filename=file.filename, file_hash=file_hash, ingestion_status="pending")
+        session.add(paper)
+        session.flush()
+        paper_id = paper.id
+
+    return {"paper_id": paper_id, "status": "pending", "message": "Paper queued for background ingestion"}
 
 
 @app.get("/papers")

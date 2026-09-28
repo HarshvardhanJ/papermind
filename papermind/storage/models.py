@@ -22,9 +22,18 @@ compromise.
 
 import uuid
 from datetime import datetime, timezone
+import os
 
 from sqlalchemy import Column, String, Integer, Text, DateTime, JSON, ForeignKey, Boolean
 from sqlalchemy.orm import DeclarativeBase, relationship
+
+# Use JSONB for Postgres, JSON for SQLite
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///data/papermind.db")
+USE_POSTGRES = DATABASE_URL.startswith("postgresql")
+if USE_POSTGRES:
+    from sqlalchemy.dialects.postgresql import JSONB as JSON_TYPE
+else:
+    from sqlalchemy import JSON as JSON_TYPE
 
 
 class Base(DeclarativeBase):
@@ -49,7 +58,7 @@ class Paper(Base):
 
     # Fixed fields every paper has, regardless of research domain
     title = Column(Text, nullable=True)
-    authors = Column(JSON, default=list)     # stored as JSON list, portable across SQLite/Postgres
+    authors = Column(JSON_TYPE, default=list)     # stored as JSON list, portable across SQLite/Postgres
     year = Column(Integer, nullable=True)
     key_claim = Column(Text, nullable=True)
     main_result = Column(Text, nullable=True)
@@ -57,7 +66,7 @@ class Paper(Base):
 
     # Dynamic, domain-specific fields extracted by the LLM.
     # e.g. {"analyte": "acetone", "response_time_seconds": 7.2}
-    extra_metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON_TYPE, default=dict)
 
     chunks = relationship("ChunkRecord", back_populates="paper", cascade="all, delete-orphan")
 

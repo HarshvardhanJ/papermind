@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: papermind
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-openai/gpt-oss-120b}
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/papermind
+      - CHROMA_PERSIST_DIR=/app/data/chroma
+      - PYTHONPATH=/app
+    volumes:
+      - ./data/uploads:/app/data/uploads
+      - ./data/cache:/app/data/cache
+      - ./data/chroma:/app/data/chroma
+      - ./data/exports:/app/data/exports
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        uv run python -c 'from papermind.storage.database import init_db; init_db()' &&
+        uv run uvicorn papermind.api.main:app --host 0.0.0.0 --port 8000
+      "
+
+  worker:
+    build: .
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-openai/gpt-oss-120b}
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/papermind
+      - CHROMA_PERSIST_DIR=/app/data/chroma
+      - PYTHONPATH=/app
+    volumes:
+      - ./data/uploads:/app/data/uploads
+      - ./data/cache:/app/data/cache
+      - ./data/chroma:/app/data/chroma
+      - ./data/exports:/app/data/exports
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        uv run python -m papermind.ingestion.background_worker
+      "
+
+volumes:
+  postgres_data:

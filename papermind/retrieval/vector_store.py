@@ -12,6 +12,7 @@ import chromadb
 from pathlib import Path
 
 from papermind.retrieval.embedder import embed_texts, embed_query
+from papermind.retrieval.hybrid_search import invalidate_bm25_cache
 
 PERSIST_DIR = Path(os.environ.get("CHROMA_PERSIST_DIR", "data/chroma"))
 PERSIST_DIR.mkdir(parents=True, exist_ok=True)
@@ -53,17 +54,18 @@ def add_chunks(chunks: list) -> None:
         documents=texts,
         metadatas=metadatas,
     )
+    invalidate_bm25_cache()
 
 
-def search(query: str, top_k: int = 5, paper_id: str | None = None) -> list[dict]:
+def search(query: str, top_k: int = 5, paper_ids: list[str] | None = None) -> list[dict]:
     """
     Returns top_k most similar chunks to the query.
-    Optionally restricted to a single paper via paper_id filter.
+    Optionally restricted to a list of paper_ids.
     """
     collection = get_collection()
     query_embedding = embed_query(query)
 
-    where = {"paper_id": paper_id} if paper_id else None
+    where = {"paper_id": {"$in": paper_ids}} if paper_ids else None
 
     results = collection.query(
         query_embeddings=[query_embedding],
@@ -88,6 +90,7 @@ def search(query: str, top_k: int = 5, paper_id: str | None = None) -> list[dict
 def delete_paper(paper_id: str) -> None:
     collection = get_collection()
     collection.delete(where={"paper_id": paper_id})
+    invalidate_bm25_cache()
 
 
 def count() -> int:

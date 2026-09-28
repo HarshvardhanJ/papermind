@@ -109,8 +109,7 @@ if __name__ == "__main__":
         print("Usage: python extractor.py <path_to_pdf>")
         sys.exit(1)
 
-    sections = parse_pdf_cached(sys.argv[1])
-    full_text = "\n\n".join(f"## {s.heading}\n{s.content}" for s in sections)
+    full_text = parse_pdf_cached(sys.argv[1])
 
     extraction, error = extract_metadata(full_text)
     if error:

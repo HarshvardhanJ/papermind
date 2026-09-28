@@ -34,7 +34,8 @@ def _file_hash(path: str) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def ingest_pdf(pdf_path: str, run_extraction: bool = True) -> dict:
+def ingest_pdf(pdf_path: str, run_extraction: bool = True, max_words: int = 200,
+               overlap_words: int = 0) -> dict:
     """
     Returns a summary dict: {"paper_id", "status", "chunks", "error"}
     """
@@ -70,7 +71,8 @@ def ingest_pdf(pdf_path: str, run_extraction: bool = True) -> dict:
 
     # --- Chunk ---
     try:
-        chunks = chunk_sections(sections, paper_id=paper_id)
+        chunks = chunk_sections(sections, paper_id=paper_id, max_words=max_words,
+                                overlap_words=overlap_words)
     except Exception as e:
         _mark_failed(paper_id, f"Chunking failed: {e}")
         return {"paper_id": paper_id, "status": "failed", "chunks": 0, "error": str(e)}
@@ -148,10 +150,22 @@ if __name__ == "__main__":
     from papermind.storage.database import init_db
 
     if len(sys.argv) < 2:
-        print("Usage: python pipeline.py <path_to_pdf> [--no-extract]")
+        print("Usage: python pipeline.py <path_to_pdf> [--no-extract] [--max-words N] [--overlap-words N]")
         sys.exit(1)
 
     init_db()
     run_extraction = "--no-extract" not in sys.argv
-    result = ingest_pdf(sys.argv[1], run_extraction=run_extraction)
+    
+    max_words = 200
+    overlap_words = 0
+    pdf_path = sys.argv[1]
+    
+    for i, arg in enumerate(sys.argv[2:], 2):
+        if arg == "--max-words" and i + 1 < len(sys.argv):
+            max_words = int(sys.argv[i + 1])
+        elif arg == "--overlap-words" and i + 1 < len(sys.argv):
+            overlap_words = int(sys.argv[i + 1])
+    
+    result = ingest_pdf(pdf_path, run_extraction=run_extraction,
+                        max_words=max_words, overlap_words=overlap_words)
     print(result)
