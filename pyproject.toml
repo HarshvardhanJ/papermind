@@ -1,11 +1,32 @@
 [project]
 name = "papermind"
 version = "0.1.0"
-description = "Add your description here"
+description = "Query a private collection of scientific PDFs with section-aware retrieval and cited answers."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "docling>=2.108.0",
     "groq>=1.5.0",
     "python-dotenv>=1.2.2",
+    "chromadb",
+    "sentence-transformers",
+    "fastapi",
+    "uvicorn",
+    "python-multipart",
+    "sqlalchemy",
+    "pydantic>=2",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "httpx",
+    "hatchling>=1.32.4",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

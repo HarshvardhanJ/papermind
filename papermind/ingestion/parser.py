@@ -7,18 +7,16 @@ from concurrent.futures import ThreadPoolExecutor
 EXPORT_PATH = Path("data/exports")
 CACHE_DIR = Path("data/cache/parsed")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+EXPORT_PATH.mkdir(parents=True, exist_ok=True)
 
 
 def get_pdf_hash(pdf_path: Path) -> str:
     return hashlib.sha256(pdf_path.read_bytes()).hexdigest()[:16]
 
 
-filenames = ["attention.pdf", "upskilling.pdf"]
 
-converter = get_converter()
-
-
-def parse_pdf_cached(pdf_path: Path) -> str:
+def parse_pdf_cached(pdf_path: Path | str) -> str:
+    pdf_path = Path(pdf_path)
     cache_key = get_pdf_hash(pdf_path)
     cache_file = CACHE_DIR / f"{cache_key}.md"
 
@@ -27,7 +25,7 @@ def parse_pdf_cached(pdf_path: Path) -> str:
         return cache_file.read_text()
 
     print(f"Parsing {pdf_path.name}...")
-    result = converter.convert(pdf_path)
+    result = get_converter().convert(pdf_path)
     md = result.document.export_to_markdown()
 
     cache_file.write_text(md)

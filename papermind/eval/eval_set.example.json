@@ -1,0 +1,4 @@
+[
+  {"question": "Why does the paper scale the dot products before the softmax?", "expected_keywords": ["large in magnitude", "softmax"]},
+  {"question": "How many layers does the encoder stack use?", "expected_keywords": ["N = 6"]}
+]
