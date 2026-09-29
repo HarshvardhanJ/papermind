@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.8.22 /uv /bin/uv
 
 # Copy project files
 COPY pyproject.toml uv.lock README.md ./
@@ -36,9 +36,12 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/papermind /app/papermind
 COPY --from=builder /app/prompts /app/prompts
 COPY --from=builder /app/pyproject.toml /app/pyproject.toml
+COPY .chainlit/ /app/.chainlit/
+COPY public/ /app/public/
+COPY chainlit.md /app/chainlit.md
 
 # Create data directories
-RUN mkdir -p /app/data/uploads /app/data/cache/parsed /app/data/chroma /app/data/exports
+RUN mkdir -p /app/data/uploads /app/data/cache/parsed /app/data/chroma /app/data/exports /app/data/model-cache
 
 # Set environment
 ENV PYTHONPATH=/app

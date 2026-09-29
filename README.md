@@ -77,7 +77,7 @@ With no LLM key configured, `/query` still returns retrieved sources and notes t
 | LLM metadata extraction (Groq) | ✅ |
 | Structured metadata in SQL | ✅ |
 | Background ingestion + status polling | ✅ |
-| Chainlit chat UI with side-panel citations | ✅ |
+| Chainlit chat UI with persistent chat history and citation hover tips | ✅ |
 | File upload panel in chat | ✅ |
 | Docker + Postgres deployment | ✅ |
 | Retrieval evaluation (strict/soft) | ✅ |
@@ -95,7 +95,7 @@ uv sync
 
 # Add Groq API key (free at console.groq.com)
 cp .env.example .env
-# Edit .env and add: GROQ_API_KEY="your_key"
+# Edit .env: set unique generated secrets and add your GROQ_API_KEY
 
 # Start API server
 uv run uvicorn papermind.api.main:app --reload
@@ -109,21 +109,9 @@ uv run chainlit run papermind.ui.chainlit_app.py --port 8001
 
 ---
 
-## Docker Deployment (Production)
+## Docker Deployment
 
-```bash
-# Build and start all services
-docker-compose up --build -d
-
-# Services:
-# - api:      http://localhost:8000   (FastAPI REST)
-# - chainlit: http://localhost:8001   (Chat UI)
-# - db:       PostgreSQL for papers (port 5432)
-# - chat-db:  PostgreSQL for chat history (port 5433)
-# - worker:   Background ingestion
-```
-
-Requires `.env` with `GROQ_API_KEY` and `CHAINLIT_AUTH_SECRET` (run `chainlit create-secret`).
+See [DEPLOY.md](DEPLOY.md) for the Oracle VM setup, required secrets, persistent storage, HTTPS via Cloudflare Tunnel, backup/restore, and a first-deploy checklist. In short: copy `.env.example` to `.env`, set unique credentials, then run `docker compose up --build -d`. The Chainlit UI and unauthenticated API are bound to localhost only; PostgreSQL and Chroma are private to the Compose network.
 
 ---
 
@@ -153,8 +141,9 @@ curl -X POST http://localhost:8000/query \
 
 ## Chainlit Chat UI
 
-- **Side-panel citations**: Each answer shows sources in a collapsible panel with title, section, relevance score, and text excerpt
-- **File upload panel**: Drag & drop PDFs; shows processing status (⏳/✅)
+- **Citation hover tips**: Hover a source reference to preview its paper and section
+- **Files panel**: Reopen the right-side panel to see uploaded papers and ingestion status
+- **Chat history**: Reopen previous conversations from the left-side history bar
 - **Chat history**: Persisted in separate PostgreSQL database (`chat_history.db` / `chat-db`)
 - **Starter prompts**: Pre-defined questions for common queries
 
@@ -195,7 +184,13 @@ Environment variables (`.env`):
 | `DATABASE_URL` | `sqlite:///data/papermind.db` | SQL backend (PostgreSQL for prod) |
 | `CHAT_DATABASE_URL` | `sqlite:///data/chat_history.db` | Chat history DB |
 | `CHROMA_PERSIST_DIR` | `data/chroma` | Vector store directory |
-| `CHAINLIT_AUTH_SECRET` | required for Chainlit | Run `chainlit create-secret` |
+| `CHROMA_HOST` | unset | Optional Chroma HTTP server host; unset uses local persistent mode |
+| `CHROMA_PORT` | `8000` | Chroma server port when `CHROMA_HOST` is set |
+| `CHAINLIT_AUTH_SECRET` | required in Docker | Secret used to sign Chainlit sessions |
+| `PAPERMIND_ADMIN_USERNAME` | required in Docker | Single Chainlit login username |
+| `PAPERMIND_ADMIN_PASSWORD` | required in Docker | Single Chainlit login password |
+| `POSTGRES_USER` | `postgres` | PostgreSQL user for both databases |
+| `POSTGRES_PASSWORD` | required in Docker | URL-safe (hex) PostgreSQL password |
 
 ---
 

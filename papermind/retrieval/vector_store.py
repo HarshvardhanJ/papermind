@@ -15,7 +15,10 @@ from papermind.retrieval.embedder import embed_texts, embed_query
 from papermind.retrieval.hybrid_search import invalidate_bm25_cache
 
 PERSIST_DIR = Path(os.environ.get("CHROMA_PERSIST_DIR", "data/chroma"))
-PERSIST_DIR.mkdir(parents=True, exist_ok=True)
+CHROMA_HOST = os.environ.get("CHROMA_HOST")
+CHROMA_PORT = int(os.environ.get("CHROMA_PORT", "8000"))
+if not CHROMA_HOST:
+    PERSIST_DIR.mkdir(parents=True, exist_ok=True)
 
 _client = None
 _collection = None
@@ -24,7 +27,10 @@ _collection = None
 def get_collection():
     global _client, _collection
     if _collection is None:
-        _client = chromadb.PersistentClient(path=str(PERSIST_DIR))
+        if CHROMA_HOST:
+            _client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+        else:
+            _client = chromadb.PersistentClient(path=str(PERSIST_DIR))
         _collection = _client.get_or_create_collection(name="paper_chunks")
     return _collection
 

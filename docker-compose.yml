@@ -1,106 +1,127 @@
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: papermind
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d papermind"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
   chat-db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: chat_history
     volumes:
       - chat_db_data:/var/lib/postgresql/data
-    ports:
-      - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d chat_history"]
       interval: 5s
       timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  chroma:
+    # Keep this aligned with the chromadb version locked in uv.lock.
+    image: chromadb/chroma:1.5.9
+    restart: unless-stopped
+    volumes:
+      - ./data/chroma:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v2/heartbeat', timeout=3)"]
+      interval: 20s
+      timeout: 5s
       retries: 5
+      start_period: 20s
 
   api:
     build: .
+    restart: unless-stopped
+    # Keep the unauthenticated REST API private to the host by default.
     ports:
-      - "8000:8000"
-    environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - LLM_MODEL=${LLM_MODEL:-openai/gpt-oss-120b}
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/papermind
-      - CHROMA_PERSIST_DIR=/app/data/chroma
-      - PYTHONPATH=/app
-    volumes:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    environment: &app_environment
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/papermind
+      CHROMA_HOST: chroma
+      CHROMA_PORT: 8000
+      HF_HOME: /app/data/model-cache
+      PYTHONPATH: /app
+      RUN_BACKGROUND_WORKER: "false"
+    volumes: &app_data
       - ./data/uploads:/app/data/uploads
       - ./data/cache:/app/data/cache
-      - ./data/chroma:/app/data/chroma
       - ./data/exports:/app/data/exports
+      - ./data/model-cache:/app/data/model-cache
     depends_on:
       db:
         condition: service_healthy
-    command: >
-      sh -c "
-        python -c 'from papermind.storage.database import init_db; init_db()' &&
-        uvicorn papermind.api.main:app --host 0.0.0.0 --port 8000
-      "
+      chroma:
+        condition: service_healthy
+    command: >-
+      sh -c "python -c 'from papermind.storage.database import init_db; init_db()' &&
+      uvicorn papermind.api.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   worker:
     build: .
+    restart: unless-stopped
     environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - LLM_MODEL=${LLM_MODEL:-openai/gpt-oss-120b}
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/papermind
-      - CHROMA_PERSIST_DIR=/app/data/chroma
-      - PYTHONPATH=/app
-    volumes:
-      - ./data/uploads:/app/data/uploads
-      - ./data/cache:/app/data/cache
-      - ./data/chroma:/app/data/chroma
-      - ./data/exports:/app/data/exports
+      <<: *app_environment
+      RUN_BACKGROUND_WORKER: "true"
+    volumes: *app_data
     depends_on:
       db:
         condition: service_healthy
-    command: >
-      sh -c "
-        python -m papermind.ingestion.background_worker
-      "
+      chroma:
+        condition: service_healthy
+    command: ["python", "-m", "papermind.ingestion.background_worker"]
 
   chainlit:
     build: .
+    restart: unless-stopped
     ports:
-      - "8001:8001"
+      - "127.0.0.1:${CHAINLIT_PORT:-8001}:8001"
     environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - LLM_MODEL=${LLM_MODEL:-openai/gpt-oss-120b}
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/papermind
-      - CHAT_DATABASE_URL=postgresql://postgres:postgres@chat-db:5432/chat_history
-      - CHROMA_PERSIST_DIR=/app/data/chroma
-      - PYTHONPATH=/app
-    volumes:
-      - ./data/uploads:/app/data/uploads
-      - ./data/cache:/app/data/cache
-      - ./data/chroma:/app/data/chroma
-      - ./data/exports:/app/data/exports
+      <<: *app_environment
+      CHAT_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@chat-db:5432/chat_history
+      CHAINLIT_AUTH_SECRET: ${CHAINLIT_AUTH_SECRET:?Set CHAINLIT_AUTH_SECRET in .env}
+      PAPERMIND_ADMIN_USERNAME: ${PAPERMIND_ADMIN_USERNAME:?Set PAPERMIND_ADMIN_USERNAME in .env}
+      PAPERMIND_ADMIN_PASSWORD: ${PAPERMIND_ADMIN_PASSWORD:?Set PAPERMIND_ADMIN_PASSWORD in .env}
+    volumes: *app_data
     depends_on:
       db:
         condition: service_healthy
       chat-db:
         condition: service_healthy
-    command: >
-      sh -c "
-        chainlit run papermind.ui.chainlit_app --host 0.0.0.0 --port 8001
-      "
+      chroma:
+        condition: service_healthy
+    command: ["chainlit", "run", "papermind.ui.chainlit_app", "--host", "0.0.0.0", "--port", "8001"]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      chainlit:
+        condition: service_started
 
 volumes:
   postgres_data:

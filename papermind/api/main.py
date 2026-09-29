@@ -23,6 +23,7 @@ even though nothing makes it wait right now.
 """
 
 import shutil
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -46,8 +47,10 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    # Start background ingestion worker
-    worker_thread = start_worker()
+    # Compose uses the dedicated worker service; local runs keep the
+    # convenient in-process worker unless explicitly disabled.
+    if os.environ.get("RUN_BACKGROUND_WORKER", "true").lower() in {"1", "true", "yes"}:
+        start_worker()
     yield
 
 
