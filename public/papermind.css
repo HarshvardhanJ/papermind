@@ -1,0 +1,57 @@
+:root {
+  color-scheme: light dark;
+  --pm-accent: #6c8f7b;
+  --pm-accent-soft: rgba(108, 143, 123, 0.14);
+}
+
+body {
+  font-feature-settings: "ss01" on, "cv11" on;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+[role="button"] {
+  transition: background-color 140ms ease, border-color 140ms ease,
+    box-shadow 140ms ease, transform 140ms ease;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--pm-accent);
+  outline-offset: 2px;
+}
+
+[data-testid="message"] {
+  scroll-margin-block: 1.5rem;
+}
+
+blockquote {
+  border-inline-start: 2px solid var(--pm-accent);
+  margin-inline: 0;
+  padding-inline-start: 0.875rem;
+  opacity: 0.88;
+}
+
+a {
+  text-underline-offset: 0.18em;
+}
+
+a[title] {
+  color: var(--pm-accent);
+  cursor: help;
+  text-decoration-style: dotted;
+}
+
+pre,
+code {
+  border-radius: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

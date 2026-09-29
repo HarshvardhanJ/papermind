@@ -1,47 +1,22 @@
-"""
-Citation formatting components for Chainlit UI.
-"""
+"""Inline source previews for PaperMind answers."""
 
-from typing import List, Dict, Any
-import chainlit as cl
+from typing import Any, Dict, List
 
 
-def format_citation_side_panel(citations: List[Dict[str, Any]]) -> str:
-    """Format citations for side panel display."""
+def append_citation_tooltips(answer: str, citations: List[Dict[str, Any]]) -> str:
+    """Render compact numbered source links with native hover titles."""
     if not citations:
-        return "## 📚 Sources\n\nNo sources found for this answer."
-    
-    lines = ["## 📚 Sources\n"]
-    for c in citations:
-        lines.append(f"### [{c['index']}] {c['title']}")
-        if c.get('section'):
-            lines.append(f"**Section:** {c['section']}")
-        if c.get('distance') is not None:
-            relevance = 1 - c['distance'] if c['distance'] <= 1 else 0
-            lines.append(f"**Relevance:** {relevance:.1%}")
-        lines.append(f"**Excerpt:** {c.get('text', '')[:300]}...")
-        lines.append("---")
-    return "\n".join(lines)
+        return answer
 
+    references = []
+    for citation in citations:
+        details = [citation.get("title") or "Untitled paper"]
+        if citation.get("section"):
+            details.append(citation["section"])
+        excerpt = " ".join((citation.get("text") or "").split())
+        if excerpt:
+            details.append(excerpt[:240] + ("…" if len(excerpt) > 240 else ""))
+        tooltip = " · ".join(details).replace("\\", "&#92;").replace('"', "&quot;")
+        references.append(f'[{citation.get("index", "?")}](# "{tooltip}")')
 
-def format_citation_inline(citations: List[Dict[str, Any]]) -> str:
-    """Format citations as inline references [1], [2], etc."""
-    if not citations:
-        return ""
-    refs = [f"[{c['index']}]" for c in citations]
-    return " ".join(refs)
-
-
-def create_citation_elements(citations: List[Dict[str, Any]]) -> List:
-    """Create Chainlit elements for citations."""
-    if not citations:
-        return []
-    
-    content = format_citation_side_panel(citations)
-    return [
-        cl.Text(
-            name="Citations",
-            content=content,
-            display="side"
-        )
-    ]
+    return f"{answer.rstrip()}\n\n**Sources:** " + " · ".join(references)
